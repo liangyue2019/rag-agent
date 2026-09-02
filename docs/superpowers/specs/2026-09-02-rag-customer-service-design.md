@@ -252,6 +252,46 @@ flowchart TD
 
 **FAQ 的处理**：FAQ 作为 `sourceType=faq` 的 chunk 参与统一检索；若评分通过且 top1 为 FAQ，`generate` 的 prompt 指示"FAQ 答案为权威答案，直接采用其表述"。不为 FAQ 单设节点，保持图简洁。
 
+### 6.3.1 图构建骨架
+
+```ts
+import { StateGraph, END, START } from "@langchain/langgraph";
+
+const graph = new StateGraph(RAGStateAnnotation)
+  .addNode("router",    routerNode)     // 意图分类
+  .addNode("rewrite",   rewriteNode)    // 多查询改写
+  .addNode("retrieve",  retrieveNode)  // 混合检索
+  .addNode("grade",     gradeNode)      // 相关性评分
+  .addNode("generate",  generateNode)   // 带引用生成（流式）
+  .addNode("chatReply", chatReplyNode)  // 闲聊短路径
+  .addNode("fallback",  fallbackNode)  // 诚实拒答
+  .addEdge(START, "router")
+  .addConditionalEdges("router", routeByIntent, {
+    chat: "chatReply",
+    rag: "rewrite",
+  })
+  .addEdge("rewrite", "retrieve")
+  .addEdge("retrieve", "grade")
+  .addConditionalEdges("grade", routeByGradeResult, {
+    generate: "generate",
+    rewrite: "rewrite",   // 带反馈回到改写，形成自我修正闭环
+    fallback: "fallback",
+  })
+  .addEdge("generate", END)
+  .addEdge("fallback", END)
+  .addEdge("chatReply", END)
+  .compile();
+
+// 路由谓词：grade 节点写回 state 后据此分流
+function routeByGradeResult(state: RAGState): "generate" | "rewrite" | "fallback" {
+  if (state.relevantDocs.length >= 1) return "generate";
+  if (state.retrievalCount < 2) return "rewrite";   // 还有重试余量
+  return "fallback";                                 // 穷尽，诚实拒答
+}
+```
+
+> 注：`addConditionalEdges` 的具体 API 以所用 `@langchain/langgraph` 版本文档为准，上例表达的是节点拓扑与分流谓词的设计意图。
+
 ### 6.4 混合检索（retrieve 节点内部）
 
 对单个查询文本：
@@ -276,6 +316,28 @@ qdrant.query("kb_chunks", {
 - 回答完成后追加 `citations` data part（引用的文档标题、来源、chunk 预览）。
 - 会话与消息落库：流结束后，assistant 消息（含 citations、graphSteps JSON）写入 SQLite。
 
+一次 RAG 问答的 SSE 事件序列示例（`POST /api/chat` 响应体）：
+
+```
+data: {"type":"data-graph-step","data":{"node":"router","summary":"意图：知识问题"}}
+
+data: {"type":"data-graph-step","data":{"node":"rewrite","data":{"queries":["退货政策是什么","如何申请退款"]}}}
+
+data: {"type":"data-graph-step","data":{"node":"retrieve","data":{"candidates":8}}}
+
+data: {"type":"data-graph-step","data":{"node":"grade","data":{"relevant":3,"irrelevant":5}}}
+
+data: {"type":"text-delta","id":"ans-1","text":"我们的退货政策是"}
+
+data: {"type":"text-delta","id":"ans-1","text":"自签收之日起 7 天内可无理由退货 [1]"}
+
+data: {"type":"data-citations","data":[{"n":1,"docTitle":"售后政策.pdf","sourceRef":"售后政策.pdf","preview":"三、退货政策：自签收之日起7天内……"}]}
+
+data: {"type":"finish"}
+```
+
+> 具体字段名以 AI SDK v5 UIMessage Stream 协议为准（data part 命名前缀 `data-*`），此处表达的是事件时序与载荷结构的设计意图：graph-step 先行、text-delta 增量、citations 收尾。
+
 ---
 
 ## 7. 数据模型
@@ -297,6 +359,66 @@ messages:   id(uuid PK) | conversation_id(FK) | role(user|assistant)
             | content | citations(json) | graph_steps(json) | created_at
 
 bm25_df:    word(PK) | df(int)          -- BM25 文档频率统计
+```
+
+Drizzle schema 定义（`apps/server/src/db/schema.ts`）：
+
+```ts
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+
+export const documents = sqliteTable("documents", {
+  id: text("id").primaryKey(),                  // uuid
+  title: text("title").notNull(),
+  sourceType: text("source_type").notNull(),    // file | url | faq
+  sourceRef: text("source_ref").notNull(),      // 文件名或 URL；FAQ 为空串
+  mime: text("mime"),
+  sizeBytes: integer("size_bytes"),
+  status: text("status").notNull().default("processing"), // processing|ready|failed
+  error: text("error"),
+  chunkCount: integer("chunk_count").notNull().default(0),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+});
+
+export const chunks = sqliteTable("chunks", {
+  id: text("id").primaryKey(),
+  documentId: text("document_id").notNull().references(() => documents.id, { onDelete: "cascade" }),
+  seq: integer("seq").notNull(),
+  content: text("content").notNull(),
+  tokenCount: integer("token_count").notNull(),
+  qdrantPointId: text("qdrant_point_id").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+});
+
+export const conversations = sqliteTable("conversations", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull().default("新会话"),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+  updatedAt: integer("updated_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+});
+
+export const messages = sqliteTable("messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id").notNull()
+    .references(() => conversations.id, { onDelete: "cascade" }),
+  role: text("role").notNull(),                 // user | assistant
+  content: text("content").notNull(),
+  citations: text("citations", { mode: "json" }).$type<Citation[]>(),
+  graphSteps: text("graph_steps", { mode: "json" }).$type<GraphStep[]>(),
+  createdAt: integer("created_at", { mode: "timestamp_ms" })
+    .notNull().default(sql`(unixepoch() * 1000)`),
+});
+
+export const bm25Df = sqliteTable("bm25_df", {
+  word: text("word").primaryKey(),
+  df: integer("df").notNull().default(0),
+});
 ```
 
 ### 7.2 Qdrant Collection
@@ -334,6 +456,37 @@ payload:    { chunkId, documentId, docTitle, sourceType,
 | GET | `/api/faqs` / PUT / DELETE | FAQ 管理 |
 | POST | `/api/retrieval/test` | 检索测试：`{query, topK}` 返回混合检索结果（含 dense/sparse 分项信息），管理页调试用 |
 | GET | `/api/health` | 健康检查（含 Qdrant/LLM 连通性） |
+
+所有接口的出入参均以 `packages/shared` 中的 zod schema 定义并生成 TS 类型，前后端共用。
+
+关键接口示例：
+
+```
+# 发起问答（SSE）
+POST /api/chat
+{ "conversationId": "c-001", "content": "退货政策是什么？" }
+→ 200 text/event-stream（事件序列见 6.5 节）
+
+# 上传文件
+POST /api/documents/upload  (multipart/form-data, field: file)
+→ 202 { "documentId": "d-001" }
+
+# 导入网页
+POST /api/documents/url
+{ "url": "https://example.com/help/return-policy" }
+→ 202 { "documentId": "d-002" }
+
+# 文档列表（轮询状态）
+GET /api/documents
+→ 200 [{ "id": "d-001", "title": "售后政策.pdf", "sourceType": "file",
+        "status": "ready", "chunkCount": 12, "createdAt": "..." }]
+
+# 检索测试
+POST /api/retrieval/test
+{ "query": "退货政策", "topK": 5 }
+→ 200 [{ "chunkId": "...", "docTitle": "售后政策.pdf", "score": 0.0183,
+        "denseRank": 1, "sparseRank": 2, "preview": "三、退货政策：……" }]
+```
 
 ---
 
