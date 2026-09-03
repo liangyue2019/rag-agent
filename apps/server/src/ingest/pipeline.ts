@@ -84,22 +84,23 @@ async function writeChunks(
   await qdrant.upsert(COLLECTION, { points, wait: true });
 
   // 4) SQLite 落库（chunks + df 增量 + 文档状态）
-  await db.transaction(async (tx) => {
-    await tx.insert(chunks).values(contents.map((content, i) => ({
+  // better-sqlite3 为同步驱动：事务回调必须同步，语句用 .run() 立即执行
+  db.transaction((tx) => {
+    tx.insert(chunks).values(contents.map((content, i) => ({
       id: points[i].payload.chunkId,
       documentId,
       seq: i,
       content,
       tokenCount: content.length,
       qdrantPointId: String(points[i].id),
-    })));
+    }))).run();
     for (const [w, d] of delta) {
-      await tx.insert(bm25Df).values({ word: w, df: d })
-        .onConflictDoUpdate({ target: bm25Df.word, set: { df: sql`${bm25Df.df} + ${d}` } });
+      tx.insert(bm25Df).values({ word: w, df: d })
+        .onConflictDoUpdate({ target: bm25Df.word, set: { df: sql`${bm25Df.df} + ${d}` } }).run();
     }
-    await tx.update(documents)
+    tx.update(documents)
       .set({ status: "ready", chunkCount: contents.length, updatedAt: new Date() })
-      .where(eq(documents.id, documentId));
+      .where(eq(documents.id, documentId)).run();
   });
 }
 
@@ -110,13 +111,13 @@ export async function deleteDocumentFully(documentId: string) {
   const df = new Map(dfRows.map((r) => [r.word, r.df]));
   const delta: DfDelta = computeDfDelta(docChunks.map((c) => tokenize(c.content)));
   rollbackDf(df, delta);
-  await db.transaction(async (tx) => {
+  db.transaction((tx) => {
     for (const [w] of delta) {
       const next = df.get(w) ?? 0;
-      if (next > 0) await tx.update(bm25Df).set({ df: next }).where(eq(bm25Df.word, w));
-      else await tx.delete(bm25Df).where(eq(bm25Df.word, w));
+      if (next > 0) tx.update(bm25Df).set({ df: next }).where(eq(bm25Df.word, w)).run();
+      else tx.delete(bm25Df).where(eq(bm25Df.word, w)).run();
     }
-    await tx.delete(documents).where(eq(documents.id, documentId)); // chunks 级联删
+    tx.delete(documents).where(eq(documents.id, documentId)).run(); // chunks 级联删
   });
   await qdrant.delete(COLLECTION, {
     filter: { must: [{ key: "documentId", match: { value: documentId } }] },
