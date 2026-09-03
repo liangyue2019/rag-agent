@@ -6,6 +6,7 @@ import { logger } from "./logger.js";
 import { ensureCollection } from "./qdrant/client.js";
 import { documentsRouter } from "./routes/documents.js";
 import { retrievalTestRouter } from "./routes/retrieval-test.js";
+import { chatRouter } from "./routes/chat.js";
 const app = express();
 app.use(cors({ origin: env.WEB_URL }));
 app.use(express.json({ limit: "2mb" }));
@@ -16,6 +17,7 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/documents", documentsRouter);
 app.use("/api/retrieval/test", retrievalTestRouter);
+app.use("/api/chat", chatRouter);
 
 await ensureCollection();
 
