@@ -8,4 +8,5 @@ import * as schema from "./schema.js";
 const file = env.DATABASE_URL.replace(/^file:/, "");
 mkdirSync(dirname(file), { recursive: true });
 export const sqlite = new Database(file);
+sqlite.pragma("foreign_keys = ON");
 export const db = drizzle(sqlite, { schema });
