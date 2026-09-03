@@ -19,11 +19,11 @@
 
 | # | 里程碑 | 任务 | 状态 | 完成日期 | 备注 |
 |---|---|---|---|---|---|
-| 1 | M1 脚手架 | Task 1 monorepo 根骨架 | ⬜ 未开始 | | |
-| 2 | M1 脚手架 | Task 2 shared 共享类型包 | ⬜ 未开始 | | |
-| 3 | M1 脚手架 | Task 3 Express 服务骨架 | ⬜ 未开始 | | |
-| 4 | M1 脚手架 | Task 4 Next.js 前端骨架 | ⬜ 未开始 | | |
-| 5 | M1 脚手架 | Task 5 根 dev 编排脚本 | ⬜ 未开始 | | |
+| 1 | M1 脚手架 | Task 1 monorepo 根骨架 | ✅ 已完成 | 2026-09-03 | Qdrant 1.19.0 跑通（daocloud 镜像）；pnpm 11.25.0（corepack 调用）；commit 7984dc7 |
+| 2 | M1 脚手架 | Task 2 shared 共享类型包 | ✅ 已完成 | 2026-09-03 | vitest 2.1.9，3 测试通过；esbuild 构建许可已加；commit b78cd6b |
+| 3 | M1 脚手架 | Task 3 Express 服务骨架 | ✅ 已完成 | 2026-09-03 | health 200 验证；better-sqlite3 升 v12（Node 24 prebuilt）；pino-pretty 补充；commit 9dbb560 |
+| 4 | M1 脚手架 | Task 4 Next.js 前端骨架 | ✅ 已完成 | 2026-09-03 | 实装 Next.js 16.3.4 + React 19.2.8（Turbopack 默认）；嵌套 workspace 已合并到根；commit 83542fe |
+| 5 | M1 脚手架 | Task 5 根 dev 编排脚本 | ✅ 已完成 | 2026-09-03 | dev 脚本改用 corepack pnpm（本机无全局 pnpm shim）；两端并行启动验证通过；commit 484942d |
 | 6 | M2 入库 | Task 6 Drizzle schema 与建库 | ⬜ 未开始 | | |
 | 7 | M2 入库 | Task 7 Qdrant 客户端与集合初始化 | ⬜ 未开始 | | |
 | 8 | M2 入库 | Task 8 LLM/Embedding 工厂 | ⬜ 未开始 | | |
