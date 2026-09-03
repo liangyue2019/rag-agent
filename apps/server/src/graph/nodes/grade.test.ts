@@ -22,8 +22,10 @@ describe("gradeNode", () => {
     vi.resetModules();
     const { gradeNode } = await import("./grade.js");
     const out = await gradeNode({ question: "q", candidates: docs(2), messages: [] } as never);
-    expect(out.relevantDocs.map((d) => d.chunkId)).toEqual(["c0"]);
-    expect(out.graphSteps[0].data.relevant).toBe(1);
+    expect(out.relevantDocs!.map((d) => d.chunkId)).toEqual(["c0"]);
+    expect(out.graphSteps).toEqual([
+      { node: "grade", data: expect.objectContaining({ relevant: 1 }) },
+    ]);
   });
   it("全部无关时 feedback 非空", async () => {
     vi.doMock("../../llm/factory.js", () => fakeModel([

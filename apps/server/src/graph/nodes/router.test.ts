@@ -14,7 +14,9 @@ describe("routerNode", () => {
     const state = { question: "你好", messages: [] } as never;
     const out = await routerNode(state);
     expect(out.route).toBe("chat");
-    expect(out.graphSteps[0].node).toBe("router");
-    expect(out.graphSteps[0].summary).toContain("闲聊");
+    // Partial 出参 + GraphStep 联合类型：用 toEqual 收窄断言（运行时语义不变）
+    expect(out.graphSteps).toEqual([
+      { node: "router", summary: expect.stringContaining("闲聊") },
+    ]);
   });
 });

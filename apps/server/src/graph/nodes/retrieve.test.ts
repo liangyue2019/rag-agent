@@ -13,7 +13,8 @@ describe("retrieveNode", () => {
     const { retrieveNode } = await import("./retrieve.js");
     const out = await retrieveNode({ queries: ["q1", "q2"], messages: [] } as never);
     expect(out.candidates).toHaveLength(2);
-    expect(out.graphSteps[0].node).toBe("retrieve");
-    expect(out.graphSteps[0].data.candidates).toBe(2);
+    expect(out.graphSteps).toEqual([
+      { node: "retrieve", data: expect.objectContaining({ candidates: 2 }) },
+    ]);
   });
 });
