@@ -2,11 +2,11 @@
   "name": "rag-agent",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n web,server -c blue,green \"pnpm --filter web dev\" \"pnpm --filter server dev\"",
-    "build": "pnpm -r build",
-    "test": "pnpm -r test",
-    "db:push": "pnpm --filter server db:push",
-    "eval": "pnpm --filter server eval"
+    "dev": "concurrently -n web,server -c blue,green \"corepack pnpm --filter web dev\" \"corepack pnpm --filter server dev\"",
+    "build": "corepack pnpm -r build",
+    "test": "corepack pnpm -r test",
+    "db:push": "corepack pnpm --filter server db:push",
+    "eval": "corepack pnpm --filter server eval"
   },
   "devDependencies": {
     "concurrently": "^9.0.0"
