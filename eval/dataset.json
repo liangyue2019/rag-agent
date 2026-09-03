@@ -1,0 +1,22 @@
+[
+  { "id": "q01", "question": "多久发货？", "expectedKeywords": ["48"], "source": "faq" },
+  { "id": "q02", "question": "退货的时限是几天？", "expectedKeywords": ["七", "7"], "source": "file" },
+  { "id": "q03", "question": "退款走什么渠道？", "expectedKeywords": ["原路"], "source": "file" },
+  { "id": "q04", "question": "你好", "expectedKeywords": [], "source": "chat" },
+  { "id": "q05", "question": "量子纠缠的物理原理是什么？", "expectedKeywords": [], "source": "fallback" },
+  { "id": "q06", "question": "怎么修改收货地址？", "expectedKeywords": ["客服"], "source": "faq" },
+  { "id": "q07", "question": "发票怎么开？", "expectedKeywords": ["发票"], "source": "faq" },
+  { "id": "q08", "question": "支持货到付款吗？", "expectedKeywords": ["不支持"], "source": "faq" },
+  { "id": "q09", "question": "客服在线时间是几点到几点？", "expectedKeywords": ["9"], "source": "faq" },
+  { "id": "q10", "question": "怎么转人工客服？", "expectedKeywords": ["人工"], "source": "faq" },
+  { "id": "q11", "question": "换货的流程是怎样的？", "expectedKeywords": ["换货"], "source": "file" },
+  { "id": "q12", "question": "商品出现质量问题怎么办？", "expectedKeywords": ["质量问题"], "source": "file" },
+  { "id": "q13", "question": "退货运费由谁承担？", "expectedKeywords": ["运费"], "source": "file" },
+  { "id": "q14", "question": "保修期是多长时间？", "expectedKeywords": ["保修"], "source": "file" },
+  { "id": "q15", "question": "配送范围覆盖哪些地区？", "expectedKeywords": ["配送"], "source": "url" },
+  { "id": "q16", "question": "怎么查询物流信息？", "expectedKeywords": ["物流"], "source": "url" },
+  { "id": "q17", "question": "签收时发现外包装破损怎么办？", "expectedKeywords": ["破损"], "source": "url" },
+  { "id": "q18", "question": "支持海外配送吗？", "expectedKeywords": ["海外"], "source": "url" },
+  { "id": "q19", "question": "谢谢你，再见", "expectedKeywords": [], "source": "chat" },
+  { "id": "q20", "question": "帮我写一首关于秋天的诗", "expectedKeywords": [], "source": "fallback" }
+]
