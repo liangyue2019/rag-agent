@@ -23,6 +23,9 @@ importers:
       '@langchain/openai':
         specifier: ^0.3.0
         version: 0.3.17(@langchain/core@0.3.80(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76)))
+      '@langchain/textsplitters':
+        specifier: ^1.0.1
+        version: 1.0.1(@langchain/core@0.3.80(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76)))
       '@node-rs/jieba':
         specifier: ^2.0.0
         version: 2.0.2
@@ -1120,6 +1123,12 @@ packages:
     engines: {node: '>=18'}
     peerDependencies:
       '@langchain/core': '>=0.3.29 <0.4.0'
+
+  '@langchain/textsplitters@1.0.1':
+    resolution: {integrity: sha512-rheJlB01iVtrOUzttscutRgLybPH9qR79EyzBEbf1u97ljWyuxQfCwIWK+SjoQTM9O8M7GGLLRBSYE26Jmcoww==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@langchain/core': ^1.0.0
 
   '@mapbox/node-pre-gyp@1.0.11':
     resolution: {integrity: sha512-Yhlar6v9WQgUp/He7BdgzOz8lqMQ8sU+jkCq7Wx8Myc5YFJLbEe7lgui/V7G1qB1DJykHSGwreceSaD60Y0PUQ==}
@@ -5027,6 +5036,11 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - ws
+
+  '@langchain/textsplitters@1.0.1(@langchain/core@0.3.80(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76)))':
+    dependencies:
+      '@langchain/core': 0.3.80(@opentelemetry/api@1.9.0)(openai@4.104.0(zod@3.25.76))
+      js-tiktoken: 1.0.21
 
   '@mapbox/node-pre-gyp@1.0.11(supports-color@8.1.1)':
     dependencies:
