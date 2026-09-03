@@ -1,5 +1,6 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_API_URL!;
@@ -53,7 +54,7 @@ export default function DocumentsPage() {
         <tbody>
           {docs.map((d) => (
             <tr key={d.id} className="border-b last:border-0">
-              <td className="p-3">{d.title}</td>
+              <td className="p-3"><Link href={`/admin/documents/${d.id}`} className="hover:underline">{d.title}</Link></td>
               <td className="p-3">{d.sourceType}</td>
               <td className="p-3">{d.status === "processing" ? "⏳ 处理中"
                 : d.status === "failed" ? `❌ ${d.error}` : "✅ ready"}</td>
