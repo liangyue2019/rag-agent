@@ -5,3 +5,5 @@ allowBuilds:
   better-sqlite3: true
   canvas: false
   esbuild: true
+  sharp: false
+  unrs-resolver: false
