@@ -24,31 +24,31 @@
 | 3 | M1 脚手架 | Task 3 Express 服务骨架 | ✅ 已完成 | 2026-09-03 | health 200 验证；better-sqlite3 升 v12（Node 24 prebuilt）；pino-pretty 补充；commit 9dbb560 |
 | 4 | M1 脚手架 | Task 4 Next.js 前端骨架 | ✅ 已完成 | 2026-09-03 | 实装 Next.js 16.3.4 + React 19.2.8（Turbopack 默认）；嵌套 workspace 已合并到根；commit 83542fe |
 | 5 | M1 脚手架 | Task 5 根 dev 编排脚本 | ✅ 已完成 | 2026-09-03 | dev 脚本改用 corepack pnpm（本机无全局 pnpm shim）；两端并行启动验证通过；commit 484942d |
-| 6 | M2 入库 | Task 6 Drizzle schema 与建库 | ⬜ 未开始 | | |
-| 7 | M2 入库 | Task 7 Qdrant 客户端与集合初始化 | ⬜ 未开始 | | |
-| 8 | M2 入库 | Task 8 LLM/Embedding 工厂 | ⬜ 未开始 | | |
-| 9 | M2 入库 | Task 9 知识源解析器 | ⬜ 未开始 | | |
-| 10 | M2 入库 | Task 10 中文感知分块器 | ⬜ 未开始 | | |
-| 11 | M2 入库 | Task 11 BM25 稀疏向量模块 | ⬜ 未开始 | | |
-| 12 | M2 入库 | Task 12 入库 Pipeline 与异步队列 | ⬜ 未开始 | | |
-| 13 | M2 入库 | Task 13 文档/FAQ REST 路由 | ⬜ 未开始 | | |
-| 14 | M2 入库 | Task 14 知识库管理前端页 | ⬜ 未开始 | | |
-| 15 | M3 基础RAG | Task 15 混合检索器 + 检索测试API | ⬜ 未开始 | | |
-| 16 | M3 基础RAG | Task 16 直线式 SSE 问答 | ⬜ 未开始 | | |
-| 17 | M3 基础RAG | Task 17 聊天页对接 useChat | ⬜ 未开始 | | |
-| 18 | M4 Agentic图 | Task 18 图状态 + router 节点 | ⬜ 未开始 | | |
-| 19 | M4 Agentic图 | Task 19 rewrite 节点 | ⬜ 未开始 | | |
-| 20 | M4 Agentic图 | Task 20 retrieve 节点 | ⬜ 未开始 | | |
-| 21 | M4 Agentic图 | Task 21 grade 节点与分流 | ⬜ 未开始 | | |
-| 22 | M4 Agentic图 | Task 22 generate/chatReply/fallback 节点 | ⬜ 未开始 | | |
-| 23 | M4 Agentic图 | Task 23 图组装 + 流式事件映射 | ⬜ 未开始 | | |
-| 24 | M4 Agentic图 | Task 24 会话/消息落库与查询 | ⬜ 未开始 | | |
-| 25 | M5 聊天完善 | Task 25 思考过程面板 + 引用交互 | ⬜ 未开始 | | |
-| 26 | M5 聊天完善 | Task 26 多轮记忆与会话侧栏 | ⬜ 未开始 | | |
-| 27 | M6 管理后台 | Task 27 文档详情页（分块+检索台） | ⬜ 未开始 | | |
-| 28 | M6 管理后台 | Task 28 FAQ 管理 + 会话历史页 | ⬜ 未开始 | | |
-| 29 | M7 评测 | Task 29 评测脚本（召回+忠实度） | ⬜ 未开始 | | |
-| 30 | M7 评测 | Task 30 调优记录与基线报告 | ⬜ 未开始 | | |
+| 6 | M2 入库 | Task 6 Drizzle schema 与建库 | ✅ 已完成 | 2026-09-03 | 五表建立；drizzle 升 0.36/0.28（push 兼容修复）；commits 3b21688/048836e |
+| 7 | M2 入库 | Task 7 Qdrant 客户端与集合初始化 | ✅ 已完成 | 2026-09-03 | kb_chunks（dense1024+sparse）就绪；commit 9f5de00 |
+| 8 | M2 入库 | Task 8 LLM/Embedding 工厂 | ✅ 已完成 | 2026-09-03 | embedding-3 显式 dimensions:1024（默认 2048）；冒烟 SKIP 待真实 key；commit ad253cc |
+| 9 | M2 入库 | Task 9 知识源解析器 | ✅ 已完成 | 2026-09-03 | 3 测试通过；URL_MAX_BYTES 后置检查；commit d7e54cb |
+| 10 | M2 入库 | Task 10 中文感知分块器 | ✅ 已完成 | 2026-09-03 | 3 测试通过；splitText 异步化+分隔符 "" 兜底；commit c820d36 |
+| 11 | M2 入库 | Task 11 BM25 稀疏向量模块 | ✅ 已完成 | 2026-09-03 | 5 测试通过；jieba 2.x 类实例 API；commit 57d4e51 |
+| 12 | M2 入库 | Task 12 入库 Pipeline 与异步队列 | ✅ 已完成 | 2026-09-03 | 集成测试 skip 待真实 key；logger 独立防循环依赖；commit 0d14426 |
+| 13 | M2 入库 | Task 13 文档/FAQ REST 路由 | ✅ 已完成 | 2026-09-03 | failed 状态机验证通过；修复 better-sqlite3 异步事务 bug；commit 1220299 |
+| 14 | M2 入库 | Task 14 知识库管理前端页 | ✅ 已完成 | 2026-09-03 | react-query 5.102.8；SSR HTML 验证通过；未用 shadcn（Tailwind 手写）；commit dd5befb |
+| 15 | M3 基础RAG | Task 15 混合检索器 + 检索测试API | ✅ 已完成 | 2026-09-03 | Qdrant Query API 零调整；集成测试 skip 待真实 key；commit 45386f0 |
+| 16 | M3 基础RAG | Task 16 直线式 SSE 问答 | ✅ 已完成 | 2026-09-03 | 修正计划模板：text-delta 用 delta 字段+text-start/end 包裹；SSE 错误路径验证通过；commit 520493c |
+| 17 | M3 基础RAG | Task 17 聊天页对接 useChat | ✅ 已完成 | 2026-09-03 | @ai-sdk/react 2.0.254 配套 ai@5；prepareSendMessagesRequest 适配 content 契约；commit 6a1db3f |
+| 18 | M4 Agentic图 | Task 18 图状态 + router 节点 | ✅ 已完成 | 2026-09-03 | TDD；Annotation API 零调整；commit 30bea75 |
+| 19 | M4 Agentic图 | Task 19 rewrite 节点 | ✅ 已完成 | 2026-09-03 | TDD；指代消解+反馈重试；commit 2398bb4 |
+| 20 | M4 Agentic图 | Task 20 retrieve 节点 | ✅ 已完成 | 2026-09-03 | TDD；多查询去重截断；commit cf47f4e |
+| 21 | M4 Agentic图 | Task 21 grade 节点与分流 | ✅ 已完成 | 2026-09-03 | TDD；generate/rewrite/fallback 分流；commit 81aeb82 |
+| 22 | M4 Agentic图 | Task 22 generate/chatReply/fallback 节点 | ✅ 已完成 | 2026-09-03 | TDD；引用生成/闲聊/拒答；commits 70fad38/8c6abfb |
+| 23 | M4 Agentic图 | Task 23 图组装 + 流式事件映射 | ✅ 已完成 | 2026-09-03 | mock 集成测试 3 路径全过（rag/chat/fallback）；citations 终态方案A；SSE 错误路径通；commit 56535c6 |
+| 24 | M4 Agentic图 | Task 24 会话/消息落库与查询 | ✅ 已完成 | 2026-09-03 | 三路由验证；补 foreign_keys pragma 级联删除生效；commit 8f68145 |
+| 25 | M5 聊天完善 | Task 25 思考过程面板 + 引用交互 | ✅ 已完成 | 2026-09-03 | GraphStep 时间线+引用chip悬停预览；commit abcd997 |
+| 26 | M5 聊天完善 | Task 26 多轮记忆与会话侧栏 | ✅ 已完成 | 2026-09-03 | 发现 useChat transport 仅首次构造，改 sendMessage body 通道传 conversationId；commit d273c90 |
+| 27 | M6 管理后台 | Task 27 文档详情页（分块+检索台） | ✅ 已完成 | 2026-09-03 | SSR 三页验证；enabled:false+refetch 手动触发确认可用；commit 998b5c1 |
+| 28 | M6 管理后台 | Task 28 FAQ 管理 + 会话历史页 | ✅ 已完成 | 2026-09-03 | 补齐 layout 死链；tsx 清理测试数据；commit e73c1fb |
+| 29 | M7 评测 | Task 29 评测脚本（召回+忠实度） | ✅ 已完成 | 2026-09-03 | 20 条数据集（faq6/file6/url4/chat2/fallback2）；SKIP 待真实 key；commit f1206af |
+| 30 | M7 评测 | Task 30 调优记录与基线报告 | ✅ 已完成 | 2026-09-03 | 报告框架 docs/eval/2026-09-baseline.md（数据待真实 key）；commit 7c8b38d |
 
 ---
 
