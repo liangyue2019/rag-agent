@@ -15,7 +15,7 @@
 
 | 文件 | 说明 |
 |---|---|
-| `packages/shared/src/index.ts` | 全部 schema 与类型导出（75 行） |
+| `packages/shared/src/index.ts` | 全部 schema 与类型导出（76 行） |
 | `packages/shared/src/index.test.ts` | vitest 校验用例（3 个） |
 | `packages/shared/package.json` | `main: "src/index.ts"`；依赖 zod ^3.23.0 |
 | `packages/shared/tsconfig.json` | ES2022 / ESNext / Bundler resolution / strict / noEmit，仅类型检查 |
@@ -31,7 +31,7 @@ export type ChatRequest = z.infer<typeof ChatRequest>;
 
 **`default` 的语义**：`RetrievalTestRequest.topK` 声明为 `z.number().int().min(1).max(20).default(5)`——请求体省略 `topK` 时 `parse` 结果自动补 5，路由层直接解构使用、无需手写 fallback（见 `apps/server/src/routes/retrieval-test.ts:9` 的 `const { query, topK } = RetrievalTestRequest.parse(req.body)`）。注意 `default` 会让 schema 的**输入类型**（`z.input`，topK 可选）与**输出类型**（`z.output`，topK 必有）不再相同，`z.infer` 取的是后者——消费方拿到的 topK 永远是 `number` 而非 `number | undefined`。
 
-**判别式联合（discriminated union）**：`GraphStep` 以 `node` 字段为判别式，负载分两种形状——带 `summary`（router/fallback/chatReply）与带 `data`（rewrite/retrieve/grade/generate）。TS 可通过 `step.node === "router"` 自动窄化出 `summary` 字段，前端 `NODE_LABEL: Record<GraphStep["node"], string>` 也依赖判别式穷举七个节点。
+**判别式联合（discriminated union）**：`GraphStep` 以 `node` 字段为判别式，负载分两种形状——带 `summary`（router/fallback/chatReply）与带 `data`（rewrite/retrieve/rerank/grade/generate）。TS 可通过 `step.node === "router"` 自动窄化出 `summary` 字段，前端 `NODE_LABEL: Record<GraphStep["node"], string>` 也依赖判别式穷举八个节点。
 
 ## 对外接口（导出的函数/类型）
 
@@ -54,13 +54,14 @@ export type ChatRequest = z.infer<typeof ChatRequest>;
 
 ### 图类型
 
-`GraphStep` 联合类型共 7 个变体（见上文判别式设计）：
+`GraphStep` 联合类型共 8 个变体（见上文判别式设计）：
 
 | node | 负载 | 语义 |
 |---|---|---|
 | `router` | `summary: string` | 意图识别结论 |
 | `rewrite` | `data: { queries: string[]; round: number }` | 查询改写轮次 |
 | `retrieve` | `data: { queries: string[]; candidates: number }` | 混合检索候选数 |
+| `rerank` | `data: { total: number; kept: number }` | DeepSeek 重排序（候选/保留数） |
 | `grade` | `data: { relevant: number; irrelevant: number; feedback: string }` | 相关性评分 |
 | `generate` | `data: { docs: number }` | 参与生成的文档数 |
 | `fallback` | `summary: string` | 拒答原因 |

@@ -119,6 +119,7 @@ text.split(/(\[\d+\])/g).map((seg, i) => {
 | router | 意图识别 | `summary` |
 | rewrite | 查询改写 | 查询：`queries.join(" / ")` |
 | retrieve | 混合检索 | 候选 N 条 |
+| rerank | 重排序 | 保留 N / 候选 N |
 | grade | 相关性评分 | 相关 N / 无关 N |
 | generate | 生成回答 | — |
 | fallback | 拒答 | `summary` |
