@@ -1,6 +1,6 @@
 # 混合检索（retrieval）
 
-> 源码：`apps/server/src/retrieval/hybrid.ts`（混合检索，约 40 行）、`apps/server/src/retrieval/rerank.ts`（DeepSeek LLM 重排序）
+> 源码：`apps/server/src/retrieval/hybrid.ts`（混合检索，约 40 行）、`apps/server/src/retrieval/rerank.ts`（LLM 重排序，默认 DeepSeek）
 > 依赖：`apps/server/src/ingest/bm25.ts`（分词与查询侧稀疏向量）、`apps/server/src/qdrant/client.ts`、`apps/server/src/db/schema.ts`、`apps/server/src/llm/factory.ts`（rerank 用 `makeRerankModel()`）
 
 ## 职责与边界
@@ -8,7 +8,7 @@
 提供两个检索函数：
 
 - `hybridSearch(query, topK)`（`hybrid.ts`）：**dense（智谱 embedding-3 语义向量）+ sparse（自实现 BM25 词项向量）双路召回，Qdrant 服务端 RRF 融合**，返回业务侧统一的 `RetrievedDoc[]`；
-- `rerankDocs(query, docs)`（`rerank.ts`）：DeepSeek LLM 二阶段精排——对召回候选逐条打 0-10 相关性分，降序重排（同分稳定）并剪除低分（阈值 `RERANK_MIN_SCORE = 3`）。它只被 graph 的 rerank 节点调用（位于 retrieve 与 grade 之间）；`hybridSearch` 本身不含 rerank，检索测试控制台看到的仍是 RRF 原始排序（见"已知限制与扩展点"）。
+- `rerankDocs(query, docs)`（`rerank.ts`）：LLM 二阶段精排（rerank 角色，默认 DeepSeek deepseek-chat，可经 env 换任意 OpenAI 兼容端点）——对召回候选逐条打 0-10 相关性分，降序重排（同分稳定）并剪除低分（阈值 `RERANK_MIN_SCORE = 3`）。它只被 graph 的 rerank 节点调用（位于 retrieve 与 grade 之间）；`hybridSearch` 本身不含 rerank，检索测试控制台看到的仍是 RRF 原始排序（见"已知限制与扩展点"）。
 
 边界：不负责多查询改写与合并去重（由 graph 的 retrieve 节点做，见下文"调用方"）、不做引用编号（generate 节点做）。
 
@@ -89,7 +89,7 @@ payload 中入库时写入的 `seq` / `faqQ` / `faqA` 在此接口被丢弃（�
 - **双存储一致性**：检索同时依赖 Qdrant（向量）与 SQLite（`bm25_df`）。ingest 侧"Qdrant upsert 成功但 SQLite 事务失败"会残留孤儿 points（df 未加），此时稀疏路可检索到该 chunk 但 idf 统计缺该文档贡献——影响的是打分精度而非正确性，教学级取舍。
 - `p.score ?? 0`：Qdrant 类型定义中 score 可选，防御性兜底。
 
-环境依赖（`apps/server/src/config.ts`）：`ZHIPU_API_KEY`（必需）、`ZHIPU_BASE_URL`（默认 `https://open.bigmodel.cn/api/paas/v4/`）、`EMBEDDING_MODEL`（默认 `embedding-3`）、`EMBEDDING_DIM`（默认 1024，必须与集合创建时一致，否则 Qdrant 报维度不匹配）、`QDRANT_URL`（默认 `http://localhost:6333`）、`DATABASE_URL`。集合由服务启动时 `ensureCollection()` 幂等创建（`apps/server/src/index.ts`）。
+环境依赖（`apps/server/src/config.ts`，角色化配置）：`EMBEDDING_API_KEY`（必需）、`EMBEDDING_BASE_URL`（必填，默认示例为智谱 OpenAI 兼容端点）、`EMBEDDING_MODEL`（默认 `embedding-3`）、`EMBEDDING_DIM`（默认 1024，必须与集合创建时一致，否则 Qdrant 报维度不匹配）、`QDRANT_URL`（默认 `http://localhost:6333`）、`DATABASE_URL`。集合由服务启动时 `ensureCollection()` 幂等创建（`apps/server/src/index.ts`）。
 
 ## 调用方
 
@@ -111,7 +111,7 @@ const perQuery = await Promise.all(state.queries.map((q) => hybridSearch(q, PER_
 
 ### 2. graph 重排序节点（`apps/server/src/graph/nodes/rerank.ts`）
 
-位于 retrieve 与 grade 之间：`rerankNode` 调用 `rerankDocs(state.question, state.candidates)`，将 DeepSeek 重排剪除后的结果覆盖写回 `state.candidates`，并记录 graphStep `{ node: "rerank", data: { total, kept } }`。细节：每条候选内容截前 300 字送 DeepSeek；候选为空直接短路不调 LLM；未返回 docId 的候选按 0 分处理（必被剪除）；无 try/catch 降级，DeepSeek 失败则图执行报错。
+位于 retrieve 与 grade 之间：`rerankNode` 调用 `rerankDocs(state.question, state.candidates)`，将重排剪除后的结果覆盖写回 `state.candidates`，并记录 graphStep `{ node: "rerank", data: { total, kept } }`。细节：每条候选内容截前 300 字送 rerank 模型（`makeRerankModel()`，rerank 角色 env 可配任意 OpenAI 兼容端点，默认 DeepSeek）；候选为空直接短路不调 LLM；未返回 docId 的候选按 0 分处理（必被剪除）；无 try/catch 降级，该模型失败则图执行报错。
 
 ### 3. 检索效果测试 API（`apps/server/src/routes/retrieval-test.ts`）
 
@@ -125,9 +125,9 @@ hits.map((h) => ({ chunkId, docTitle, score, preview: h.content.slice(0, 120) })
 
 ## 测试与验证
 
-`apps/server/src/retrieval/hybrid.test.ts` 为**集成测试**：`describe.skipIf(!hasKey)`——`ZHIPU_API_KEY` 缺失或为 `"sk-placeholder"` 时跳过；同时依赖运行中的 Qdrant 与已初始化的 SQLite。用例（60s 超时）：`hybridSearch("测试查询", 5)` 不抛错且每个命中含 `chunkId` / `score` / `docTitle` 字段。
+`apps/server/src/retrieval/hybrid.test.ts` 为**集成测试**：`describe.skipIf(!hasKey)`——`EMBEDDING_API_KEY` 缺失或为 `"sk-placeholder"` 时跳过；同时依赖运行中的 Qdrant 与已初始化的 SQLite。用例（60s 超时）：`hybridSearch("测试查询", 5)` 不抛错且每个命中含 `chunkId` / `score` / `docTitle` 字段。
 
-`apps/server/src/retrieval/rerank.test.ts`：4 个 mock 单测（`vi.mock` factory——同分稳定降序重排 / 低于 `RERANK_MIN_SCORE` 剪除 / 未返回 docId 按 0 分被剪 / 空数组直接返回不调 LLM）+ 1 个真实 DeepSeek 集成用例（`describe.skipIf(!hasKey)`，`DEEPSEEK_API_KEY` 缺失或为占位值时跳过；60s 超时，断言相关文档排最前、无关被剪——用例内 `vi.doUnmock` + `resetModules` 解除 factory mock 拿真实实现）。
+`apps/server/src/retrieval/rerank.test.ts`：4 个 mock 单测（`vi.mock` factory——同分稳定降序重排 / 低于 `RERANK_MIN_SCORE` 剪除 / 未返回 docId 按 0 分被剪 / 空数组直接返回不调 LLM）+ 1 个真实 rerank 集成用例（`describe.skipIf(!hasKey)`，`RERANK_API_KEY` 缺失或为占位值时跳过；60s 超时，断言相关文档排最前、无关被剪——用例内 `vi.doUnmock` + `resetModules` 解除 factory mock 拿真实实现）。
 
 hybridSearch 无 mock 单测——模块逻辑薄（映射 + 一次 Qdrant 调用），核心算法（分词/稀疏向量构建）的测试在 `ingest/bm25.test.ts` 中覆盖。端到端效果验证另有 `pnpm --filter server eval`（`apps/server/scripts/eval.ts`，基线报告见 `docs/eval/2026-09-baseline.md`）。
 
@@ -136,7 +136,7 @@ hybridSearch 无 mock 单测——模块逻辑薄（映射 + 一次 Qdrant 调�
 pnpm --filter server test
 
 # 有真实 key + 本地 Qdrant 运行中：集成测试执行
-ZHIPU_API_KEY=<real-key> pnpm --filter server test
+EMBEDDING_API_KEY=<real-key> pnpm --filter server test
 
 # 手动验证检索效果（需服务已启动）
 curl -X POST http://localhost:3001/api/retrieval/test \
@@ -153,7 +153,7 @@ curl -X POST http://localhost:3001/api/retrieval/test \
 
 扩展点（设计文档 `docs/superpowers/specs/2026-09-02-rag-customer-service-design.md` 预留）：
 
-1. **Rerank 精排（已落地 LLM 版）**：图内已接入 DeepSeek LLM 打分式精排（`rerank.ts`，设计文档 §15 该扩展的提前落地）；后续可替换/叠加为交叉编码器 rerank API（Jina / Cohere）以获得更标准的精排质量；retrieval-test API 侧尚未接入 rerank；
+1. **Rerank 精排（已落地 LLM 版）**：图内已接入 LLM 打分式精排（`rerank.ts`，rerank 角色可配任意 OpenAI 兼容端点，默认 DeepSeek；设计文档 §15 该扩展的提前落地）；后续可替换/叠加为交叉编码器 rerank API（Jina / Cohere）以获得更标准的精排质量；retrieval-test API 侧尚未接入 rerank；
 2. **稀疏向量换模型**：`bm25.ts` 产出的 `{ indices, values }` 与 Qdrant 稀疏向量格式解耦，可平滑替换为 BGE-M3 等模型产出的学习型稀疏向量（设计文档风险表提及）；
 3. **统计缓存**：`bm25_df` 与 count 的内存缓存，ingest/delete 时增量维护。
 

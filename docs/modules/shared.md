@@ -61,7 +61,7 @@ export type ChatRequest = z.infer<typeof ChatRequest>;
 | `router` | `summary: string` | 意图识别结论 |
 | `rewrite` | `data: { queries: string[]; round: number }` | 查询改写轮次 |
 | `retrieve` | `data: { queries: string[]; candidates: number }` | 混合检索候选数 |
-| `rerank` | `data: { total: number; kept: number }` | DeepSeek 重排序（候选/保留数） |
+| `rerank` | `data: { total: number; kept: number }` | LLM 重排序（候选/保留数） |
 | `grade` | `data: { relevant: number; irrelevant: number; feedback: string }` | 相关性评分 |
 | `generate` | `data: { docs: number }` | 参与生成的文档数 |
 | `fallback` | `summary: string` | 拒答原因 |

@@ -12,18 +12,22 @@
 
 ## config：环境变量校验
 
-`apps/server/src/config.ts` 用 zod 定义 `Env` schema 并在**模块加载时**执行 `Env.parse(process.env)`——任何变量缺失或不合法，进程在 import 阶段即抛错退出，绝不带错配置进入业务运行。例如缺 key 时直接报 `缺少 ZHIPU_API_KEY` / `缺少 DEEPSEEK_API_KEY`。环境文件由入口侧 `import "dotenv/config"` 加载（`src/index.ts:1` 与 `scripts/smoke-llm.ts:1`），config.ts 自身不读 `.env`，只读 `process.env`。
+`apps/server/src/config.ts` 用 zod 定义 `Env` schema 并在**模块加载时**执行 `Env.parse(process.env)`——任何变量缺失或不合法，进程在 import 阶段即抛错退出，绝不带错配置进入业务运行。例如缺 key 时直接报 `缺少 CHAT_API_KEY` / `缺少 RERANK_API_KEY`。环境文件由入口侧 `import "dotenv/config"` 加载（`src/index.ts:1` 与 `scripts/smoke-llm.ts:1`），config.ts 自身不读 `.env`，只读 `process.env`。
+
+**LLM 角色化配置**：三个角色（chat / embedding / rerank）各自独立指定 `MODEL + BASE_URL + API_KEY`，厂商不限——任何 OpenAI 兼容端点（智谱 / DeepSeek / Kimi / Qwen / Ollama 本地等）都可填入任何角色，三组可同可异。
 
 | 变量 | 类型/校验 | 默认值 | 说明 |
 |---|---|---|---|
-| `ZHIPU_API_KEY` | `string().min(1)` | **必填** | 智谱 API key（主链路） |
-| `ZHIPU_BASE_URL` | string | `https://open.bigmodel.cn/api/paas/v4/` | 智谱 OpenAI 兼容端点 |
-| `CHAT_MODEL` | string | `glm-4-flash` | 对话模型 |
-| `DEEPSEEK_API_KEY` | `string().min(1)` | **必填** | DeepSeek API key（rerank 精排） |
-| `DEEPSEEK_BASE_URL` | string | `https://api.deepseek.com` | DeepSeek OpenAI 兼容端点 |
-| `RERANK_MODEL` | string | `deepseek-chat` | DeepSeek 重排序模型 |
-| `EMBEDDING_MODEL` | string | `embedding-3` | 向量模型 |
+| `CHAT_MODEL` | string | `glm-4-flash` | chat 角色模型（对话/结构化输出） |
+| `CHAT_BASE_URL` | `string().min(1)` | **必填** | chat 角色 OpenAI 兼容端点 |
+| `CHAT_API_KEY` | `string().min(1)` | **必填** | chat 角色 API key |
+| `EMBEDDING_MODEL` | string | `embedding-3` | embedding 角色模型（向量化） |
+| `EMBEDDING_BASE_URL` | `string().min(1)` | **必填** | embedding 角色 OpenAI 兼容端点 |
+| `EMBEDDING_API_KEY` | `string().min(1)` | **必填** | embedding 角色 API key |
 | `EMBEDDING_DIM` | `coerce.number()` | `1024` | 向量维度（见下） |
+| `RERANK_MODEL` | string | `deepseek-chat` | rerank 角色模型（重排序打分） |
+| `RERANK_BASE_URL` | `string().min(1)` | **必填** | rerank 角色 OpenAI 兼容端点 |
+| `RERANK_API_KEY` | `string().min(1)` | **必填** | rerank 角色 API key |
 | `QDRANT_URL` | string | `http://localhost:6333` | Qdrant 地址 |
 | `DATABASE_URL` | string | `file:./data/app.db` | SQLite 连接串（`file:` 前缀） |
 | `PORT` | `coerce.number()` | `3001` | HTTP 端口 |
@@ -96,9 +100,11 @@ export async function ensureCollection() {
 
 `apps/server/src/llm/factory.ts` 导出三个无参工厂，均读取 `env` 配置：
 
-- `makeChatModel()`：`ChatOpenAI`，`model: env.CHAT_MODEL`（默认 glm-4-flash）、`temperature: 0.2`（客服场景偏保守）、`maxRetries: 2`（429/5xx 自动重试）、`configuration.baseURL: env.ZHIPU_BASE_URL` 走智谱 OpenAI 兼容端点，不依赖任何智谱私有 SDK。
-- `makeRerankModel()`：`ChatOpenAI`，`model: env.RERANK_MODEL`（默认 deepseek-chat）、`temperature: 0`（重排序要求打分确定、可复现，与 `makeChatModel` 的 0.2 不同）、`maxRetries: 2`、`apiKey: env.DEEPSEEK_API_KEY` + `configuration.baseURL: env.DEEPSEEK_BASE_URL` 走 DeepSeek OpenAI 兼容端点。与 `makeChatModel` 的关键差异：**不同厂商、不同 key**——主链路（对话/向量化）走智谱，rerank 精排走 DeepSeek，两组 env 完全独立。
-- `makeEmbeddings()`：`OpenAIEmbeddings`，**`dimensions: env.EMBEDDING_DIM` 必须显式指定**——智谱 embedding-3 默认 2048 维，若省略该参数，写入的向量维度将与 Qdrant 集合的 dense size（1024）冲突，upsert 直接报维度不匹配错误。
+- `makeChatModel()`（chat 角色）：`ChatOpenAI`，`model: env.CHAT_MODEL`（默认 glm-4-flash）、`temperature: 0.2`（客服场景偏保守）、`maxRetries: 2`（429/5xx 自动重试）、`apiKey: env.CHAT_API_KEY` + `configuration.baseURL: env.CHAT_BASE_URL`，任何 OpenAI 兼容端点可用。
+- `makeEmbeddings()`（embedding 角色）：`OpenAIEmbeddings`，`model: env.EMBEDDING_MODEL`、`dimensions: env.EMBEDDING_DIM`（必须显式——不同提供商默认维度不一，须与 Qdrant 集合一致）、`apiKey: env.EMBEDDING_API_KEY` + `baseURL: env.EMBEDDING_BASE_URL`。
+- `makeRerankModel()`（rerank 角色）：`ChatOpenAI`，`model: env.RERANK_MODEL`（默认 deepseek-chat）、`temperature: 0`（重排序要求打分确定、可复现，与 `makeChatModel` 的 0.2 不同）、`maxRetries: 2`、`apiKey: env.RERANK_API_KEY` + `configuration.baseURL: env.RERANK_BASE_URL`。
+- 三工厂结构一致（model/apiKey/baseURL 三元组），仅 temperature 与角色默认值不同——**角色与厂商解耦**，换厂商只改 env 不改代码。
+- embedding 维度陷阱：`dimensions` 必须显式指定——智谱 embedding-3 默认 2048 维，若省略该参数，写入的向量维度将与 Qdrant 集合的 dense size（1024）冲突，upsert 直接报维度不匹配错误；**换 embedding 提供商时须确认其支持请求指定维度，且换维度需重建 Qdrant 集合**。
 
 **消费方**（均在模块级创建一次实例）：`makeChatModel` 被 5 个图节点消费——`src/graph/nodes/router.ts`、`rewrite.ts`、`grade.ts`（各自 `withStructuredOutput` 绑定路由/改写/评分的输出 schema）与 `generate.ts`、`chat-reply.ts`；另有 `scripts/eval.ts`（裁判模型）与冒烟脚本。`makeRerankModel` 仅一处：`src/retrieval/rerank.ts`（图 rerank 节点经 `rerankDocs` 调用，`withStructuredOutput` 绑定 0-10 打分 schema）。`makeEmbeddings` 只有两处：`src/ingest/pipeline.ts:61`（写入向量化）与 `src/retrieval/hybrid.ts:8`（查询向量化），两侧共用同一 EMBEDDING_DIM，天然维度一致。
 
@@ -106,13 +112,13 @@ export async function ensureCollection() {
 
 用法：`corepack pnpm --filter server exec tsx scripts/smoke-llm.ts`
 
-- key 未配置或为占位值 `sk-placeholder` 时打印 `[SKIP]` 并 `exit(0)`——CI 无真实 key 也不会红；
+- CHAT_API_KEY 或 EMBEDDING_API_KEY 未配置或为占位值 `sk-placeholder` 时打印 `[SKIP]` 并 `exit(0)`——CI 无真实 key 也不会红；
 - 否则依次验证：`withStructuredOutput(z.object({ ok: z.boolean() }))` 结构化输出 → `embedQuery` 返回向量 → 维度必须等于 `EMBEDDING_DIM`，不符即抛 `维度不符` 错误。这一步正是拦截"embedding 维度与集合不一致"的最后防线。
 
 ## 实现细节与已知坑
 
 1. **同步驱动，事务必须同步回调**：better-sqlite3 是同步 API，`db.transaction((tx) => { ... })` 的回调**不能是 async**，且内部语句须立即 `.run()` 执行（`pipeline.ts:87` 的代码注释即此教训的沉淀）。参考实现见 `src/ingest/pipeline.ts:88-104`：chunks 批量插入、bm25_df 增量 upsert、documents 状态更新在同一个纯同步回调里原子提交。
 2. **Qdrant 与 SQLite 是双写、无分布式事务**：pipeline 先 upsert Qdrant（`wait: true`）再提交 SQLite 事务，删除则先 SQLite 后 Qdrant filter 删。中途崩溃可能留下两侧不一致，靠文档状态字段（`status`/`error`）与幂等设计兜底。
-3. **config 在 import 时即校验**：任何单元测试只要 import 链上碰到 config.ts 就要求 `ZHIPU_API_KEY` / `DEEPSEEK_API_KEY` 存在——本地开发需 `.env` 提供（哪怕是占位值，冒烟脚本与集成测试会校验真伪或自动跳过）。
+3. **config 在 import 时即校验**：任何单元测试只要 import 链上碰到 config.ts 就要求三角色的 `*_API_KEY` 存在——本地开发需 `.env` 提供（哪怕是占位值，冒烟脚本与集成测试会校验真伪或自动跳过）。
 4. **`express.json({ limit: "2mb" })`**（`src/index.ts:13`）：为文档上传预留的请求体上限，默认 100kb 会拒绝 FAQ/URL 导入之外的稍大 payload。
-5. **双 LLM 供应商配置**：智谱（主链路 chat/embedding）与 DeepSeek（rerank 精排）各自独立 env（`ZHIPU_API_KEY`/`ZHIPU_BASE_URL` 与 `DEEPSEEK_API_KEY`/`DEEPSEEK_BASE_URL` 互不相通），`.env` 需同时提供两组 key；rerank 无降级路径，DeepSeek 不可用时图执行直接报错。
+5. **LLM 角色化配置（厂商不限）**：chat / embedding / rerank 三角色各自独立 `MODEL + BASE_URL + API_KEY`（`CHAT_*` / `EMBEDDING_*` / `RERANK_*`），默认示例为 chat+embedding 走智谱、rerank 走 DeepSeek，但任何 OpenAI 兼容端点均可替换；rerank 无降级路径，该角色不可用时图执行直接报错。

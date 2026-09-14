@@ -35,7 +35,7 @@ upload/url/faqs                 runIngest(job)
                                            → status=ready, chunkCount
 ```
 
-环境依赖（`apps/server/src/config.ts`，zod 校验）：`ZHIPU_API_KEY`（必需）、`EMBEDDING_MODEL`（默认 `embedding-3`）、`EMBEDDING_DIM`（默认 1024，须与 Qdrant 集合一致）、`QDRANT_URL`（默认 `http://localhost:6333`）、`DATABASE_URL`（默认 `file:./data/app.db`）。
+环境依赖（`apps/server/src/config.ts`，zod 校验，角色化配置）：`EMBEDDING_API_KEY`（必需，embedding 角色）、`EMBEDDING_MODEL`（默认 `embedding-3`）、`EMBEDDING_DIM`（默认 1024，须与 Qdrant 集合一致）、`QDRANT_URL`（默认 `http://localhost:6333`）、`DATABASE_URL`（默认 `file:./data/app.db`）。
 
 ## 组成（文件清单）
 
@@ -175,9 +175,9 @@ waitReady(id, timeoutMs = 60_000): Promise<void>  // 500ms 间隔轮询
 | `bm25.test.ts` | 5 | 分词+小写化（"退货Policy退货"→`["退货","policy","退货"]`）、wordId 确定性/u32 范围、tf 权重 `= 1+ln(tf)`、idf 单调性（df 大权重低）、delta 加减对称 |
 | `pipeline.test.ts` | 1（集成） | FAQ 全流程：processing→ready（`chunkCount=1`）→Qdrant scroll 可检索→`deleteDocumentFully` 后 0 points |
 
-集成测试 `describe.skipIf(!hasKey)`：`ZHIPU_API_KEY` 缺失或为 `"sk-placeholder"` 时跳过——依赖真实智谱 key、运行中的 Qdrant 与 SQLite；超时 90s。fixtures 位于 `apps/server/tests/fixtures/`（sample.txt / sample.md），路径经 `import.meta.dirname` 拼接。
+集成测试 `describe.skipIf(!hasKey)`：`EMBEDDING_API_KEY` 缺失或为 `"sk-placeholder"` 时跳过——依赖真实 embedding key、运行中的 Qdrant 与 SQLite；超时 90s。fixtures 位于 `apps/server/tests/fixtures/`（sample.txt / sample.md），路径经 `import.meta.dirname` 拼接。
 
 ```bash
 pnpm --filter server test          # 无 key 时仅跑 11 个单测
-ZHIPU_API_KEY=<real-key> pnpm --filter server test   # 含集成
+EMBEDDING_API_KEY=<real-key> pnpm --filter server test   # 含集成
 ```

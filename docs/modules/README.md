@@ -10,7 +10,7 @@ flowchart LR
     Web -->|REST + SSE| Server["Express API (3001)"]
     Server --> Graph["LangGraph Agentic RAG 图<br/>路由→改写→检索→评分→生成/兜底"]
     Server --> Ingest["入库 Pipeline<br/>解析/分块/向量化"]
-    Graph -->|OpenAI 兼容协议| LLM["智谱开放平台<br/>GLM-4-Flash / embedding-3"]
+    Graph -->|OpenAI 兼容协议| LLM["LLM 提供商（角色化配置）<br/>chat: glm-4-flash / rerank: deepseek-chat<br/>embedding: embedding-3"]
     Graph --> QD[("Qdrant (6333)")]
     Graph --> SQL[("SQLite")]
     Ingest --> QD
@@ -41,8 +41,9 @@ docker compose up -d
 # 2. 安装依赖
 corepack pnpm i
 
-# 3. 配置智谱 API Key（参考 .env.example）
-#    apps/server/.env 中设置 ZHIPU_API_KEY
+# 3. 配置 LLM（参考 .env.example，角色化：chat/embedding/rerank 三角色
+#    各自独立 MODEL+BASE_URL+API_KEY，任意 OpenAI 兼容厂商均可）
+#    apps/server/.env 中设置 CHAT_API_KEY / EMBEDDING_API_KEY / RERANK_API_KEY
 
 # 4. 初始化 SQLite 表结构
 corepack pnpm db:push
