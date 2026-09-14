@@ -3,8 +3,9 @@ import { z } from "zod";
 import { makeChatModel, makeEmbeddings } from "../src/llm/factory.js";
 import { env } from "../src/config.js";
 
-if (!env.ZHIPU_API_KEY || env.ZHIPU_API_KEY === "sk-placeholder") {
-  console.log("[SKIP] ZHIPU_API_KEY 未配置真实 key，冒烟测试待用户提供 key 后执行：corepack pnpm --filter server exec tsx scripts/smoke-llm.ts");
+const isPlaceholder = (k: string) => !k || k === "sk-placeholder";
+if (isPlaceholder(env.CHAT_API_KEY) || isPlaceholder(env.EMBEDDING_API_KEY)) {
+  console.log("[SKIP] CHAT_API_KEY 或 EMBEDDING_API_KEY 未配置真实 key，冒烟测试待用户提供 key 后执行：corepack pnpm --filter server exec tsx scripts/smoke-llm.ts");
   process.exit(0);
 }
 

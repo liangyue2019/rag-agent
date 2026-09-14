@@ -60,7 +60,7 @@ describe("rerankDocs（mock LLM）", () => {
   });
 });
 
-const key = process.env.DEEPSEEK_API_KEY ?? "";
+const key = process.env.RERANK_API_KEY ?? "";
 const hasKey = !!key && key !== "sk-placeholder";
 
 // 集成测试：依赖真实 DeepSeek key（.env 已配置则真跑）

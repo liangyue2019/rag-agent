@@ -7,9 +7,11 @@ import { makeChatModel } from "../src/llm/factory.js";
 
 interface EvalItem { id: string; question: string; expectedKeywords: string[]; source: string }
 
-const key = process.env.ZHIPU_API_KEY ?? "";
-if (!key || key === "sk-placeholder") {
-  console.log("[SKIP] ZHIPU_API_KEY 未配置真实 key。评测需真实 LLM/Embedding 调用。");
+// 评测走完整链路：召回需 embedding，忠实度经 /api/chat 走图（chat + rerank 角色）
+const roleKeys = [process.env.CHAT_API_KEY, process.env.EMBEDDING_API_KEY, process.env.RERANK_API_KEY];
+const isPlaceholder = (k?: string) => !k || k === "sk-placeholder";
+if (roleKeys.some(isPlaceholder)) {
+  console.log("[SKIP] CHAT_API_KEY / EMBEDDING_API_KEY / RERANK_API_KEY 存在未配置真实 key 的角色，评测需全部就绪。");
   console.log("       配置后运行：corepack pnpm --filter server eval");
   process.exit(0);
 }

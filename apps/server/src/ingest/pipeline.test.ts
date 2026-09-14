@@ -8,7 +8,8 @@ import { enqueueIngest, deleteDocumentFully } from "./pipeline.js";
 import { ensureCollection } from "../qdrant/client.js";
 import { waitReady } from "./waitReady.js";
 
-const key = process.env.ZHIPU_API_KEY ?? "";
+// pipeline 只依赖 embedding 角色（向量化入库），chat/rerank 不在此链路
+const key = process.env.EMBEDDING_API_KEY ?? "";
 const hasKey = !!key && key !== "sk-placeholder";
 
 describe.skipIf(!hasKey)("ingest pipeline（集成）", () => {
