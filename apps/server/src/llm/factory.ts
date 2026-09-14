@@ -20,3 +20,14 @@ export function makeEmbeddings() {
     configuration: { baseURL: env.ZHIPU_BASE_URL },
   });
 }
+
+/** DeepSeek 重排序模型（temperature 0 保证打分稳定） */
+export function makeRerankModel() {
+  return new ChatOpenAI({
+    model: env.RERANK_MODEL,
+    apiKey: env.DEEPSEEK_API_KEY,
+    temperature: 0,
+    maxRetries: 2,
+    configuration: { baseURL: env.DEEPSEEK_BASE_URL },
+  });
+}

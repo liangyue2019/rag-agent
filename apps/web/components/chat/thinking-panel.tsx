@@ -7,6 +7,7 @@ export type GraphStep =
   | { node: "router"; summary: string }
   | { node: "rewrite"; data: { queries: string[]; round: number } }
   | { node: "retrieve"; data: { queries: string[]; candidates: number } }
+  | { node: "rerank"; data: { total: number; kept: number } }
   | { node: "grade"; data: { relevant: number; irrelevant: number; feedback: string } }
   | { node: "generate"; data: { docs: number } }
   | { node: "fallback"; summary: string }
@@ -14,7 +15,7 @@ export type GraphStep =
 
 const NODE_LABEL: Record<GraphStep["node"], string> = {
   router: "意图识别", rewrite: "查询改写", retrieve: "混合检索",
-  grade: "相关性评分", generate: "生成回答", fallback: "拒答", chatReply: "直接回复",
+  rerank: "重排序", grade: "相关性评分", generate: "生成回答", fallback: "拒答", chatReply: "直接回复",
 };
 
 export function ThinkingPanel({ steps }: { steps: GraphStep[] }) {
@@ -36,6 +37,9 @@ export function ThinkingPanel({ steps }: { steps: GraphStep[] }) {
               )}
               {"data" in s && s.node === "retrieve" && (
                 <div className="text-gray-400">候选 {s.data.candidates} 条</div>
+              )}
+              {"data" in s && s.node === "rerank" && (
+                <div className="text-gray-400">保留 {s.data.kept} / 候选 {s.data.total}</div>
               )}
               {"data" in s && s.node === "grade" && (
                 <div className="text-gray-400">相关 {s.data.relevant} / 无关 {s.data.irrelevant}</div>

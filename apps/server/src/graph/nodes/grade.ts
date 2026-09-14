@@ -12,6 +12,13 @@ const GradesSchema = z.object({
 
 /** LLM 逐条相关性评分（设计文档 6.3） */
 export async function gradeNode(state: RagState): Promise<Partial<RagState>> {
+  if (state.candidates.length === 0) {
+    return {
+      relevantDocs: [],
+      rewriteFeedback: "上轮检索无候选结果",
+      graphSteps: [{ node: "grade", data: { relevant: 0, irrelevant: 0, feedback: "检索无候选" } }],
+    };
+  }
   const model = makeChatModel().withStructuredOutput(GradesSchema);
   const { grades } = await model.invoke([
     { role: "system", content: "逐条判断资料与问题的相关性。只依据内容是否有助于回答问题判断。输出每条的 docId、relevant、reason（中文，一句话）。" },

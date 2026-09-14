@@ -53,6 +53,7 @@ export type GraphStep =
   | { node: "router"; summary: string }
   | { node: "rewrite"; data: { queries: string[]; round: number } }
   | { node: "retrieve"; data: { queries: string[]; candidates: number } }
+  | { node: "rerank"; data: { total: number; kept: number } }
   | { node: "grade"; data: { relevant: number; irrelevant: number; feedback: string } }
   | { node: "generate"; data: { docs: number } }
   | { node: "fallback"; summary: string }

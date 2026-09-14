@@ -37,4 +37,21 @@ describe("gradeNode", () => {
     expect(out.relevantDocs).toHaveLength(0);
     expect(out.rewriteFeedback!.length).toBeGreaterThan(0);
   });
+  it("candidates 为空时不调 LLM，直接返回 relevant=0 且 feedback 非空", async () => {
+    const invoke = vi.fn();
+    vi.doMock("../../llm/factory.js", () => ({
+      makeChatModel: () => ({
+        withStructuredOutput: () => ({ invoke }),
+      }),
+    }));
+    vi.resetModules();
+    const { gradeNode } = await import("./grade.js");
+    const out = await gradeNode({ question: "q", candidates: [], messages: [] } as never);
+    expect(invoke).not.toHaveBeenCalled();
+    expect(out.relevantDocs).toEqual([]);
+    expect(out.rewriteFeedback!.length).toBeGreaterThan(0);
+    expect(out.graphSteps).toEqual([
+      { node: "grade", data: expect.objectContaining({ relevant: 0, feedback: "检索无候选" }) },
+    ]);
+  });
 });

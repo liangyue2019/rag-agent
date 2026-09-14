@@ -3,18 +3,20 @@ import { RagState } from "./state.js";
 import { routerNode, routeByIntent } from "./nodes/router.js";
 import { rewriteNode } from "./nodes/rewrite.js";
 import { retrieveNode } from "./nodes/retrieve.js";
+import { rerankNode } from "./nodes/rerank.js";
 import { gradeNode, routeByGradeResult } from "./nodes/grade.js";
 import { generateNode } from "./nodes/generate.js";
 import { chatReplyNode } from "./nodes/chat-reply.js";
 import { fallbackNode } from "./nodes/fallback.js";
 
 /** 组装 RAG 图（设计文档 6.3）：
- * router → (chat→chatReply | rag→rewrite→retrieve→grade → generate/rewrite 重试/fallback) */
+ * router → (chat→chatReply | rag→rewrite→retrieve→rerank→grade → generate/rewrite 重试/fallback) */
 export function buildRagGraph() {
   return new StateGraph(RagState)
     .addNode("router", routerNode)
     .addNode("rewrite", rewriteNode)
     .addNode("retrieve", retrieveNode)
+    .addNode("rerank", rerankNode)
     .addNode("grade", gradeNode)
     .addNode("generate", generateNode)
     .addNode("chatReply", chatReplyNode)
@@ -22,7 +24,8 @@ export function buildRagGraph() {
     .addEdge(START, "router")
     .addConditionalEdges("router", routeByIntent, { chat: "chatReply", rag: "rewrite" })
     .addEdge("rewrite", "retrieve")
-    .addEdge("retrieve", "grade")
+    .addEdge("retrieve", "rerank")
+    .addEdge("rerank", "grade")
     .addConditionalEdges("grade", routeByGradeResult, {
       generate: "generate", rewrite: "rewrite", fallback: "fallback",
     })

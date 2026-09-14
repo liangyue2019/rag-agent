@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 const mockState = vi.hoisted(() => ({
   route: "rag" as "chat" | "rag",
   allIrrelevant: false,
+  rerankCutAll: false,
 }));
 
 vi.mock("../llm/factory.js", () => ({
@@ -30,6 +31,15 @@ vi.mock("../llm/factory.js", () => ({
       yield { content: "答案片段二 [1]" };
     })(),
   }),
+  // rerank：全部打 8 分（cutAll 时打 0 分剪光）
+  makeRerankModel: () => ({
+    withStructuredOutput: () => ({
+      invoke: async (msgs: { role: string; content: string }[]) => {
+        const docIds = [...msgs[1].content.matchAll(/docId=(\S+)/g)].map((m) => m[1]);
+        return { scores: docIds.map((docId) => ({ docId, score: mockState.rerankCutAll ? 0 : 8 })) };
+      },
+    }),
+  }),
 }));
 
 vi.mock("../retrieval/hybrid.js", () => ({
@@ -53,9 +63,10 @@ const stepNodes = (steps: unknown) =>
   (steps as Array<{ node: string }>).map((s) => s.node);
 
 describe("RAG 图集成（mock LLM）", () => {
-  it("rag 路径：router→rewrite→retrieve→grade→generate，产出 answer+citations+graphSteps", async () => {
+  it("rag 路径：router→rewrite→retrieve→rerank→grade→generate，产出 answer+citations+graphSteps", async () => {
     mockState.route = "rag";
     mockState.allIrrelevant = false;
+    mockState.rerankCutAll = false;
 
     const result = await invokeGraph("退货政策是什么");
 
@@ -67,7 +78,7 @@ describe("RAG 图集成（mock LLM）", () => {
       expect.objectContaining({ n: 1, chunkId: "c1", docTitle: "文档A" }),
     ]);
     expect(stepNodes(result.graphSteps))
-      .toEqual(["router", "rewrite", "retrieve", "grade", "generate"]);
+      .toEqual(["router", "rewrite", "retrieve", "rerank", "grade", "generate"]);
   }, 30_000);
 
   it("chat 路径：router→chatReply 短路，不检索", async () => {
@@ -85,6 +96,7 @@ describe("RAG 图集成（mock LLM）", () => {
   it("两轮检索全不相关 → fallback 诚实拒答", async () => {
     mockState.route = "rag";
     mockState.allIrrelevant = true;
+    mockState.rerankCutAll = false;
 
     const result = await invokeGraph("量子力学是什么");
 
@@ -92,6 +104,27 @@ describe("RAG 图集成（mock LLM）", () => {
     expect(result.answer).toContain("抱歉");
     expect(result.citations).toEqual([]);
     expect(stepNodes(result.graphSteps))
-      .toEqual(["router", "rewrite", "retrieve", "grade", "rewrite", "retrieve", "grade", "fallback"]);
+      .toEqual(["router", "rewrite", "retrieve", "rerank", "grade", "rewrite", "retrieve", "rerank", "grade", "fallback"]);
+  }, 30_000);
+
+  it("rerank 剪光候选 → grade 空候选短路 → 两轮 rewrite 后 fallback", async () => {
+    mockState.route = "rag";
+    mockState.rerankCutAll = true;
+
+    const result = await invokeGraph("某个深奥问题");
+
+    expect(result.retrievalCount).toBe(2);
+    expect(result.candidates).toHaveLength(0);
+    expect(result.answer).toContain("抱歉");
+    const gradeSteps = result.graphSteps.filter((s) => s.node === "grade");
+    expect(gradeSteps).toHaveLength(2);
+    for (const s of gradeSteps) {
+      if ("data" in s && s.node === "grade") {
+        expect(s.data.relevant).toBe(0);
+        expect(s.data.feedback).toContain("检索无候选");
+      }
+    }
+    expect(stepNodes(result.graphSteps))
+      .toEqual(["router", "rewrite", "retrieve", "rerank", "grade", "rewrite", "retrieve", "rerank", "grade", "fallback"]);
   }, 30_000);
 });
