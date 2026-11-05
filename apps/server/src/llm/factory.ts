@@ -1,6 +1,11 @@
 import { ChatOpenAI, OpenAIEmbeddings } from "@langchain/openai";
 import { env } from "../config.js";
 
+/** 解析 CHAT_EXTRA_BODY（已由 config 校验为 JSON 对象字符串），空串返回 undefined */
+const chatExtraBody = env.CHAT_EXTRA_BODY
+  ? (JSON.parse(env.CHAT_EXTRA_BODY) as Record<string, unknown>)
+  : undefined;
+
 /** chat 角色：对话与结构化输出（router/rewrite/grade/generate/chatReply/judge） */
 export function makeChatModel() {
   return new ChatOpenAI({
@@ -9,6 +14,8 @@ export function makeChatModel() {
     temperature: 0.2,
     maxRetries: 2,
     configuration: { baseURL: env.CHAT_BASE_URL },
+    // 透传厂商特有的请求体字段（如 DeepSeek 关闭思考模式），未配置时不影响请求
+    modelKwargs: chatExtraBody,
   });
 }
 
