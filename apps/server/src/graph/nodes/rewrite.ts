@@ -2,8 +2,12 @@ import { z } from "zod";
 import { makeChatModel } from "../../llm/factory.js";
 import type { RagState } from "../state.js";
 
+/** 变体上限：模型可能无视 prompt 多给，这里在代码侧截断而非用 zod 硬约束，
+ * 否则多返回一个就会触发 OUTPUT_PARSING_FAILURE 导致整轮失败（换模型时极易踩到）。 */
+const MAX_VARIANTS = 2;
+
 const QueriesSchema = z.object({
-  queries: z.array(z.string()).min(1).max(2),
+  queries: z.array(z.string()).min(1),
 });
 
 /** 多查询改写：指代消解 + 变体扩展；重试轮注入上轮反馈 */
@@ -17,7 +21,10 @@ export async function rewriteNode(state: RagState): Promise<Partial<RagState>> {
     { role: "system", content: `根据对话历史改写用户问题用于知识库检索：1) 消解代词指代，补全为独立完整的问题；2) 生成 1~2 个不同角度的同义变体。${feedback}` },
     { role: "user", content: `对话历史：\n${history}\n\n当前问题：${state.question}` },
   ]);
-  const all = [state.question, ...queries.filter((q) => q !== state.question)];
+  const all = [
+    state.question,
+    ...queries.filter((q) => q !== state.question).slice(0, MAX_VARIANTS),
+  ];
   return {
     queries: all,
     retrievalCount: state.retrievalCount + 1,

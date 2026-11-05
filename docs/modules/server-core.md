@@ -35,7 +35,7 @@
 | `WEB_URL` | string | `http://localhost:3000` | CORS 白名单 origin |
 | `LANGSMITH_TRACING` | string | `false` | LangSmith 链路追踪开关 |
 
-三个 `*_MODEL` 均**无默认值**（必填）——不预设任何厂商模型，避免 baseURL 与模型名错配。`.env.example` 给出的是一组可用组合：chat/rerank 走 DeepSeek（`deepseek-flash` / `deepseek-chat`），embedding 走智谱（`embedding-3`，DeepSeek 无 embeddings 接口）。
+三个 `*_MODEL` 均**无默认值**（必填）——不预设任何厂商模型，避免 baseURL 与模型名错配。`.env.example` 给出的是一组可用组合：chat/rerank 走 DeepSeek（`deepseek-flash` / `deepseek-chat`），embedding 走本地 Ollama（`qwen3-embedding:0.6b`，1024 维，走 `/v1` OpenAI 兼容端点，key 可任意填非空值）。
 
 **EMBEDDING_DIM=1024 的来源**：设计文档（`docs/superpowers/specs/2026-09-02-rag-customer-service-design.md` 7.2 节）约定 kb_chunks 的 dense 向量为 "embedding-3, 1024 维, Cosine"。智谱 embedding-3 **默认输出 2048 维**，本项目选定 1024 作为存储维度以兼顾检索效果与内存/索引开销；该值同时被 Qdrant 建集合（dense size）与 `makeEmbeddings` 的 `dimensions` 参数消费，改它必须两端同步。
 

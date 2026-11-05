@@ -10,7 +10,7 @@ flowchart LR
     Web -->|REST + SSE| Server["Express API (3001)"]
     Server --> Graph["LangGraph Agentic RAG 图<br/>路由→改写→检索→评分→生成/兜底"]
     Server --> Ingest["入库 Pipeline<br/>解析/分块/向量化"]
-    Graph -->|OpenAI 兼容协议| LLM["LLM 提供商（角色化配置，任意 OpenAI 兼容厂商）<br/>chat: deepseek-flash（DeepSeek-V4.1-Flash）<br/>rerank: deepseek-chat / embedding: embedding-3"]
+    Graph -->|OpenAI 兼容协议| LLM["LLM 提供商（角色化配置，任意 OpenAI 兼容厂商）<br/>chat: deepseek-flash（DeepSeek-V4.1-Flash）<br/>rerank: deepseek-chat / embedding: qwen3-embedding:0.6b（本地 Ollama）"]
     Graph --> QD[("Qdrant (6333)")]
     Graph --> SQL[("SQLite")]
     Ingest --> QD
@@ -45,7 +45,8 @@ corepack pnpm i
 #    各自独立 MODEL+BASE_URL+API_KEY，任意 OpenAI 兼容厂商均可）
 #    apps/server/.env 中设置 CHAT_API_KEY / EMBEDDING_API_KEY / RERANK_API_KEY
 #    注意：DeepSeek-V4.1-Flash 需 CHAT_EXTRA_BODY={"thinking":{"type":"disabled"}} 才能走结构化输出
-#    （DeepSeek 无 embeddings 接口，embedding 角色需另配支持 embeddings 的厂商）
+#    本地 embedding 可用 Ollama：ollama pull qwen3-embedding:0.6b
+#    （BASE_URL 填 http://localhost:11434/v1，key 任意非空值，DIM=1024）
 
 # 4. 初始化 SQLite 表结构
 corepack pnpm db:push
